@@ -4,50 +4,54 @@ use 5.006;
 use strict;
 use warnings;
 
-=head1 NAME
+use Mojo::Base 'Mojolicious::Plugin';
+use Mojo::Util qw/slurp dumper/;
 
-Mojolicious::Plugin::HandlebarsJSRenderer - The great new Mojolicious::Plugin::HandlebarsJSRenderer!
-
-=head1 VERSION
-
-Version 0.01
-
-=cut
+use JavaScript::V8::Handlebars;
 
 our $VERSION = '0.01';
 
+sub register {
+	my( $self, $app, $conf ) = @_;
+
+	my $hbjs = JavaScript::V8::Handlebars->new;
+
+	$app->renderer->add_handler( hbs => sub {
+		my( $r, $c, $output, $options ) = @_;
+
+
+		my $template_code = $options->{inline} || slurp $r->template_path($options);
+		die "No template code found" unless length $template_code;
+
+		#TODO Caching, partials
+		$$output = $hbjs->render_string( $template_code, $c->stash );
+
+		return 1;
+	} );
+}
+
+
+
+=head1 NAME
+
+Mojolicious::Plugin::HandlebarsJSRenderer - Render Handlebars inside Mojolicious
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+This is a plugin for adding the Handlebars templating language to Mojolicious as a renderer.
 
-Perhaps a little code snippet.
+	sub startup {
+		my $self = shift;
+		...
 
-    use Mojolicious::Plugin::HandlebarsJSRenderer;
+		$self->plugin('HandlebarsJSRenderer');
+		$self->renderer->default_handler('hbs') #default to hbs templates instead of epl
+		...
+	}
 
-    my $foo = Mojolicious::Plugin::HandlebarsJSRenderer->new();
-    ...
 
-=head1 EXPORT
+As of now there are now options available.
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 SUBROUTINES/METHODS
-
-=head2 function1
-
-=cut
-
-sub function1 {
-}
-
-=head2 function2
-
-=cut
-
-sub function2 {
-}
 
 =head1 AUTHOR
 
