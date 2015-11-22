@@ -19,6 +19,8 @@ sub register {
 	$app->renderer->add_handler( hbs => sub {
 		my( $r, $c, $output, $options ) = @_;
 
+		return unless $r->template_path($options) or length $options->{inline};
+
 
 		my $template_code = $options->{inline} || slurp $r->template_path($options);
 		die "No template code found" unless length $template_code;
