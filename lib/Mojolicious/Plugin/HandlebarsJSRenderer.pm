@@ -9,7 +9,7 @@ use Mojo::Util qw/slurp dumper/;
 
 use JavaScript::V8::Handlebars;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub register {
 	my( $self, $app, $conf ) = @_;
