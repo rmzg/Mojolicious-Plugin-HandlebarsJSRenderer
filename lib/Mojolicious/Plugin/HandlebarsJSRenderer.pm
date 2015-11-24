@@ -9,12 +9,30 @@ use Mojo::Util qw/slurp dumper/;
 
 use JavaScript::V8::Handlebars;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
+
+has 'wrapper';
 
 sub register {
 	my( $self, $app, $conf ) = @_;
-
 	my $hbjs = JavaScript::V8::Handlebars->new;
+
+	if( $conf->{wrapper} ) { 
+		for( @{ $app->renderer->paths } ) {
+			if( -r "$_/$conf->{wrapper}" ) {
+				$self->wrapper( "$_/$conf->{wrapper}" );
+				last;
+			}
+		}
+
+		if( $self->wrapper ) {
+			$self->wrapper( $hbjs->compile_file( $self->wrapper ) );
+		}
+		else {
+			die "Failed to find $conf->{wrapper} in @{$app->renderer->paths}";
+		}
+	}
+
 
 	$app->renderer->add_handler( hbs => sub {
 		my( $r, $c, $output, $options ) = @_;
@@ -27,6 +45,10 @@ sub register {
 
 		#TODO Caching, partials
 		$$output = $hbjs->render_string( $template_code, $c->stash );
+
+		if( $self->wrapper ) {
+			$$output = $self->wrapper->({ %{$c->stash}, content => $$output });
+		}
 
 		return 1;
 	} );
