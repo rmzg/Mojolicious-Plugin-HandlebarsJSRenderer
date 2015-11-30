@@ -68,13 +68,11 @@ This is a plugin for adding the Handlebars templating language to Mojolicious as
 		my $self = shift;
 		...
 
-		$self->plugin('HandlebarsJSRenderer');
+		$self->plugin('HandlebarsJSRenderer', { wrapper => $wrapper });
 		$self->renderer->default_handler('hbs') #default to hbs templates instead of epl
 		...
 	}
 
-
-As of now there are now options available.
 
 
 =head1 AUTHOR
