@@ -9,7 +9,7 @@ use Mojo::Util qw/slurp dumper/;
 
 use JavaScript::V8::Handlebars;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 has 'wrapper';
 
@@ -17,6 +17,7 @@ sub register {
 	my( $self, $app, $conf ) = @_;
 	my $hbjs = JavaScript::V8::Handlebars->new;
 
+	#TODO Clean this up
 	if( $conf->{wrapper} ) { 
 		for( @{ $app->renderer->paths } ) {
 			if( -r "$_/$conf->{wrapper}" ) {
@@ -33,18 +34,28 @@ sub register {
 		}
 	}
 
+	for( @{ $app->renderer->paths } ) {
+		next unless -d $_;
+		# Magically picks up partials as well
+		$hbjs->add_template_dir( $_ );
+	}
+
 
 	$app->renderer->add_handler( hbs => sub {
 		my( $r, $c, $output, $options ) = @_;
 
 		return unless $r->template_path($options) or length $options->{inline};
 
-
-		my $template_code = $options->{inline} || slurp $r->template_path($options);
-		die "No template code found" unless length $template_code;
-
-		#TODO Caching, partials
-		$$output = $hbjs->render_string( $template_code, $c->stash );
+		if( length $options->{inline} ) {
+			$$output = $hbjs->render_string( $options->{inline}, $c->stash );
+		}
+		elsif( my $template = $r->template_for($c) ) {
+			$$output = $hbjs->execute_template( $template, $c->stash );
+		}
+		else {
+			#TODO should this die?
+			return;
+		}
 
 		if( $self->wrapper ) {
 			$$output = $self->wrapper->({ %{$c->stash}, content => $$output });
