@@ -9,7 +9,7 @@ use Mojo::Util qw/slurp dumper/;
 
 use JavaScript::V8::Handlebars;
 
-our $VERSION = '0.04';
+our $VERSION = '0.06';
 
 has 'wrapper';
 
@@ -30,8 +30,23 @@ sub register {
 			$self->wrapper( $hbjs->compile_file( $self->wrapper ) );
 		}
 		else {
-			die "Failed to find $conf->{wrapper} in @{$app->renderer->paths}";
+			die "Failed to find/read $conf->{wrapper} in @{$app->renderer->paths}";
 		}
+	}
+
+	if( $conf->{helpers} ) {
+
+		my $helper_path;
+		for( @{ $app->renderer->paths } ) {
+			if( -r "$_/$conf->{helpers}" ) {
+				$helper_path = "$_/$conf->{helpers}";
+				last;
+			}
+		}
+
+		die unless $helper_path;
+
+		$hbjs->eval_file($helper_path);
 	}
 
 	for( @{ $app->renderer->paths } ) {
@@ -48,6 +63,9 @@ sub register {
 
 		if( length $options->{inline} ) {
 			$$output = $hbjs->render_string( $options->{inline}, $c->stash );
+		}
+		elsif( $options->{template} ) {
+			$$output = $hbjs->execute_template( $options->{template}, $c->stash );
 		}
 		elsif( my $template = $r->template_for($c) ) {
 			$$output = $hbjs->execute_template( $template, $c->stash );
@@ -79,12 +97,16 @@ This is a plugin for adding the Handlebars templating language to Mojolicious as
 		my $self = shift;
 		...
 
-		$self->plugin('HandlebarsJSRenderer', { wrapper => $wrapper });
+		$self->plugin('HandlebarsJSRenderer', { [wrapper => "wrapper.hbs"], [helpers => "helpers.js"] });
 		$self->renderer->default_handler('hbs') #default to hbs templates instead of epl
 		...
 	}
 
+Note that by default when this plugin is initialized it attempts to cache every .hbs file inside your templates directory, which includes registering any files under a directory named 'partials' as a partial with the same name as the file. You can also pass a wrapper file which is executed after any render call and passed the results of the first render as the variable 'content'. 
 
+Specifying a helpers.js file allow you to execute Handlebars.registerHelper() statements to provide functions to your templates. Or really, any other code you want. Any JS in this file is executed in the same global context that contains the Handlebars object that containers registeredHelpers, stored templates and is invokved to compile and execute new templates.
+
+Automatically found parsers are stored as 'partial/partialname'; for example: ./templates/partials/things/myfoo.hbs; may be accessed as C<< {{>partials/things/myfoo}} >>
 
 =head1 AUTHOR
 
